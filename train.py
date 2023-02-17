@@ -3,7 +3,7 @@ import os
 import torch
 import numpy as np
 from settings import Setting_train_val
-from core.exp import basicExp, tafExp, ConvlstmExp, recConvExp, yolov3, yolox, tafSwinExp, tafTCNExp, tafSynExp
+from core.exp import basicExp, tafExp, yolov3, yolox, tafBFMExp
 
 def main():
     parser = argparse.ArgumentParser(description='Train network.')
@@ -22,6 +22,8 @@ def main():
     parser.add_argument('--batch_size', type=int, default=30)   #这个不用多说，可以根据显存调整
     parser.add_argument('--num_cpu_workers', type=int, default=-1)  #一般默认就行
     parser.add_argument('--nodes', type=int, default=1) #几张卡分布就设置几
+
+    parser.add_argument('--augmentation', type=bool, default = True)   #是否进行数据增强
     
 
     args = parser.parse_args()
@@ -40,39 +42,23 @@ def main():
     elif args.exp_type == "taf":    #Event Representation用TAF，检测器用AED
         trainer = tafExp(settings)
     elif args.exp_type == "taf_tcn":    #Event Representation用TAF+BFM，检测器用AED
-        trainer = tafTCNExp(settings)
-    elif args.exp_type == "taf_swin":   #废案
-        trainer = tafSwinExp(settings)
-    elif args.exp_type == "taf_syn":   #废案
-        trainer = tafSynExp(settings)
-    elif (args.exp_type == "convlstm") or (args.exp_type == "rec-conv"):    #废案，Event Representation用Event Volume，检测器用AED，FPN之后加入ConvLSTM或Rec-Conv
-        settings.train_memory_steps = 4
-        if settings.dataset_name == "gen4":
-            settings.init_lr = 0.0004 / 4 * settings.batch_size
-            settings.warmup_lr = 0.0004 / 4 * settings.batch_size
-            settings.max_epoch = 30
-            settings.max_epoch_to_stop = 30
-        else:
-            settings.init_lr = 0.0002 / 4 * settings.batch_size
-            settings.warmup_lr = 0.0002 / 4 * settings.batch_size
-            settings.max_epoch = 15
-            settings.max_epoch_to_stop = 15
-        settings.init_lr = settings.init_lr / settings.train_memory_steps
-        #settings.min_lr_ratio = 0.05
-        settings.min_lr_ratio = 1.0
-        settings.infer_time = 10000
-        if args.exp_type == "convlstm":
-            trainer = ConvlstmExp(settings)
-        else:
-            trainer = recConvExp(settings)
+        trainer = tafBFMExp(settings)
     elif args.exp_type == "yolov3": #Event Representation用除TAF外其他数据，检测器用YOLOv3
         settings.input_img_size = [640,640]
         settings.clipping = True
         settings.init_lr = 0.0005
         settings.warmup_epochs = 2
         trainer = yolov3(settings)
+    elif args.exp_type == "yolov3": #Event Representation用TAF+BFM，检测器用YOLOv3
+        settings.input_img_size = [640,640]
+        settings.clipping = True
+        settings.init_lr = 0.0005
+        settings.warmup_epochs = 2
+        trainer = yolov3tafBFM(settings)
     elif args.exp_type == "yolox": #Event Representation用除TAF外其他数据，检测器用YOLOX
         trainer = yolox(settings)
+    elif args.exp_type == "yolox": #Event Representation用TAF+BFM，检测器用YOLOX
+        trainer = yoloxtafBFM(settings)
     trainer.train()
 
 

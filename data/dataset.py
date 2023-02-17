@@ -320,21 +320,15 @@ class propheseeTafDataset(propheseeDataset):
     def load_data(self, idx):
         data_root = os.path.join(self.data_dir, self.mode)
         timestamp = self.sequence_end_t[idx]
+        
+        if self.time_channels > 4:
+            ecd_file = os.path.join(os.path.join(data_root,"bins{0}".format(int(self.time_channels // 2))), self.file_name[idx]+ "_" + str(timestamp) + ".npy")
+            volume = np.fromfile(ecd_file, dtype=np.uint8).reshape(int(self.time_channels * 2), self.img_size[0], self.img_size[1]).astype(np.float32)
+            ecd_file2 = os.path.join(os.path.join(data_root,"bins{0}".format(int(self.time_channels))), self.file_name[idx]+ "_" + str(timestamp) + ".npy")
+            volume2 = np.fromfile(ecd_file2, dtype=np.uint8).reshape(int(self.time_channels), self.img_size[0], self.img_size[1]).astype(np.float32)
+            volume = np.concatenate([volume, volume2], 0)
+        else:
+            ecd_file = os.path.join(os.path.join(data_root,"bins{0}".format(int(self.time_channels))), self.file_name[idx]+ "_" + str(timestamp) + ".npy")
+            volume = np.fromfile(ecd_file, dtype=np.uint8).reshape(int(self.time_channels * 2), self.img_size[0], self.img_size[1]).astype(np.float32)
 
-        ecds = []
-        
-        #if self.time_channels > 4:
-        ecd_file = os.path.join(os.path.join(data_root,"bins{0}".format(int(self.time_channels))), self.file_name[idx]+ "_" + str(timestamp) + ".npy")
-        volume = np.fromfile(ecd_file, dtype=np.uint8).reshape(int(self.time_channels * 2), self.img_size[0], self.img_size[1]).astype(np.float32)
-        # ecd_file2 = os.path.join(os.path.join(data_root,"bins{0}".format(int(self.time_channels))), self.file_name[idx]+ "_" + str(timestamp) + ".npy")
-        # volume2 = np.fromfile(ecd_file2, dtype=np.uint8).reshape(int(self.time_channels), self.img_size[0], self.img_size[1]).astype(np.float32)
-        # volume = np.concatenate([volume, volume2], 0)
-        # else:
-        # for i in range(self.time_channels):
-        #     ecd_file = os.path.join(os.path.join(data_root,"bin{0}".format(7-i)), self.file_name[idx]+ "_" + str(timestamp) + ".npy")
-        #     ecd = np.fromfile(ecd_file, dtype=np.uint8).reshape(2, self.img_size[0], self.img_size[1]).astype(np.float32)
-        #     ecds.append(ecd)
-        
-        #volume = np.concatenate(ecds, 0)
-        #print("volume",volume.shape)
         return volume

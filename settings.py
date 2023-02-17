@@ -102,7 +102,7 @@ class Setting_train_val(Settings):
         self.warmup_lr = 0.0
         self.min_lr_ratio = 0.05
 
-        self.augment = True
+        self.augment = args.augmentation
         self.reduce_evaluate = False
 
 class Setting_test(Settings):

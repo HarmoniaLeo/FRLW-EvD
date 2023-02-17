@@ -276,6 +276,7 @@ class CSPDarknet(nn.Module):
         out_features=("dark3", "dark4", "dark5"),
         depthwise=False,
         act="silu",
+        stem = Focus
     ):
         super().__init__()
         assert out_features, "please provide output features of Darknet"
@@ -286,7 +287,7 @@ class CSPDarknet(nn.Module):
         base_depth = max(round(dep_mul * 3), 1)  # 3
 
         # stem
-        self.stem = Focus(in_channel, base_channels, ksize=3, act=act)
+        self.stem = stem(in_channel, base_channels, ksize=3, act=act)
 
         # dark2
         self.dark2 = nn.Sequential(

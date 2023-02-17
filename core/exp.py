@@ -467,36 +467,40 @@ class tafExp(basicExp):
         self.ori_width = val_dataset.width
         self.ori_height = val_dataset.height
 
-class tafTCNExp(tafExp):
+class tafBFMExp(tafExp):
     def __init__(self, settings):
         super().__init__(settings)
         self.input_layer = Temporal_Active_Focus_connect
 
-class tafSwinExp(tafExp):
-    def __init__(self, settings):
-        super().__init__(settings)
-        #self.input_layer = Temporal_Active_Focus_3D
-        self.input_layer = Temporal_Active_Focus_swin
+# class tafSwinExp(tafExp):
+#     def __init__(self, settings):
+#         super().__init__(settings)
+#         #self.input_layer = Temporal_Active_Focus_3D
+#         self.input_layer = Temporal_Active_Focus_swin
 
-class tafSynExp(tafTCNExp):
-    def buildBackbone(self):
-        self.backbone = SwinDarknet(self.backbone_size, self.settings.img_size, self.input_layer, in_channels=self.nr_input_channels,out_features=self.out_features,act="silu",out_channels=self.in_channels, stem_out_channels=self.stem_out_channels)
+# class tafSynExp(tafTCNExp):
+#     def buildBackbone(self):
+#         self.backbone = SwinDarknet(self.backbone_size, self.settings.img_size, self.input_layer, in_channels=self.nr_input_channels,out_features=self.out_features,act="silu",out_channels=self.in_channels, stem_out_channels=self.stem_out_channels)
 
-class ConvlstmExp(basicExp):
-    def buildMemory(self):
-        self.memory = memoryModel(makeMemoryBlocks(ConvLSTMCell, [3, 3, 3], [256, 256, 256], [256, 256, 256], [1, 1, 1], "relu"))
+# class ConvlstmExp(basicExp):
+#     def buildMemory(self):
+#         self.memory = memoryModel(makeMemoryBlocks(ConvLSTMCell, [3, 3, 3], [256, 256, 256], [256, 256, 256], [1, 1, 1], "relu"))
 
-class recConvExp(ConvlstmExp):
-    def buildMemory(self):
-        self.memory = memoryModel(makeMemoryBlocks(recConvCell, [3, 3, 3], [256, 256, 256], [256, 256, 256], [1, 1, 1], "relu"))
+# class recConvExp(ConvlstmExp):
+#     def buildMemory(self):
+#         self.memory = memoryModel(makeMemoryBlocks(recConvCell, [3, 3, 3], [256, 256, 256], [256, 256, 256], [1, 1, 1], "relu"))
 
-class seqnmsExp(basicExp):
-    def buildHead(self):
-        self.head = YOLOXHead(len(self.object_classes), self.width, in_channels=self.in_channels, act="silu", strides= self.strides, seq_nms = True)
+# class seqnmsExp(basicExp):
+#     def buildHead(self):
+#         self.head = YOLOXHead(len(self.object_classes), self.width, in_channels=self.in_channels, act="silu", strides= self.strides, seq_nms = True)
 
 class yolov3(basicExp):
+    def __init__(self, settings):
+        super().__init__(settings)
+        self.input_layer = None
+
     def buildBackbone(self):
-        self.backbone = DarkNet_53(self.nr_input_channels)
+        self.backbone = DarkNet_53(self.nr_input_channels, stem = self.input_layer)
 
     def buildNeck(self):
         self.neck = YOLOv3FPN()
@@ -505,10 +509,152 @@ class yolov3(basicExp):
         #self.head = YOLOv3Head(len(self.object_classes))
         self.head = YOLOv3Head2(len(self.object_classes))
 
+class yolov3tafBFM(yolov3):
+    def __init__(self, settings):
+        super().__init__(settings)
+        self.input_layer = Temporal_Active_Focus_connect
+    
+    def createDatasets(self):
+        """
+        Creates the validation and the training data based on the lists specified in the config/settings.yaml file.
+        """
+        train_dataset = propheseeTafDataset(
+                                        self.settings.bbox_path,
+                                        self.settings.data_path,
+                                        self.settings.dataset_name, 
+                                        self.settings.input_img_size,
+                                        self.settings.img_size,
+                                        self.settings.infer_time, 
+                                        self.settings.event_volume_bins,
+                                        "train",
+                                        self.settings.augment,False)
+
+        self.object_classes = train_dataset.object_classes
+
+        val_dataset = propheseeTafDataset(
+                                        self.settings.bbox_path,
+                                        self.settings.data_path,
+                                        self.settings.dataset_name, 
+                                        self.settings.input_img_size,
+                                        self.settings.img_size,
+                                        self.settings.infer_time, 
+                                        self.settings.event_volume_bins,
+                                        "val",
+                                        False,False)
+
+        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+
+        self.train_loader = self.dataset_loader(train_dataset, batch_size=self.settings.batch_size,
+                                                    device=self.settings.gpu_device,
+                                                    num_workers=self.settings.num_cpu_workers, pin_memory=True,sampler=train_sampler)
+        self.val_loader = self.dataset_loader(val_dataset, batch_size=self.settings.batch_size,
+                                                device=self.settings.gpu_device,
+                                                num_workers=self.settings.num_cpu_workers, pin_memory=True,shuffle=False)
+
+        print(f"train_loader_len: {len(self.train_loader)}, test_loader_len: {len(self.val_loader)}")
+        self.nr_train_epochs=len(self.train_loader)
+        self.nr_val_epochs=len(self.val_loader)
+        self.ori_width = train_dataset.width
+        self.ori_height = train_dataset.height
+    
+    def createDatasetsTest(self):
+        val_dataset = propheseeTafDataset(
+                                        self.settings.bbox_path,
+                                        self.settings.data_path,
+                                        self.settings.dataset_name, 
+                                        self.settings.input_img_size,
+                                        self.settings.img_size,
+                                        self.settings.infer_time, 
+                                        self.settings.event_volume_bins,
+                                        "test",
+                                        False,False)
+
+        self.object_classes = val_dataset.object_classes
+
+        self.val_loader = self.dataset_loader(val_dataset, batch_size=self.settings.batch_size,
+                                            device=self.settings.gpu_device,
+                                            num_workers=self.settings.num_cpu_workers, pin_memory=False,shuffle=False)
+
+        print(f"test_loader_len: {len(self.val_loader)}")
+        self.nr_val_epochs=len(self.val_loader)
+        self.ori_width = val_dataset.width
+        self.ori_height = val_dataset.height
+
 class yolox(basicExp):
     def buildBackbone(self):
-        self.backbone = CSPDarknet(self.nr_input_channels,0.33, 0.5)
+        self.backbone = CSPDarknet(self.nr_input_channels, 0.33, 0.5, stem = self.input_layer)
     
     def configModel(self):
         super().configModel()
         self.in_channels = [128, 256, 512]#[48 * 4, 48 * 8, 48 * 16]
+
+class yoloxtafBFM(yolox):
+    def __init__(self, settings):
+        super().__init__(settings)
+        self.input_layer = Temporal_Active_Focus_connect
+    
+    def createDatasets(self):
+        """
+        Creates the validation and the training data based on the lists specified in the config/settings.yaml file.
+        """
+        train_dataset = propheseeTafDataset(
+                                        self.settings.bbox_path,
+                                        self.settings.data_path,
+                                        self.settings.dataset_name, 
+                                        self.settings.input_img_size,
+                                        self.settings.img_size,
+                                        self.settings.infer_time, 
+                                        self.settings.event_volume_bins,
+                                        "train",
+                                        self.settings.augment,False)
+
+        self.object_classes = train_dataset.object_classes
+
+        val_dataset = propheseeTafDataset(
+                                        self.settings.bbox_path,
+                                        self.settings.data_path,
+                                        self.settings.dataset_name, 
+                                        self.settings.input_img_size,
+                                        self.settings.img_size,
+                                        self.settings.infer_time, 
+                                        self.settings.event_volume_bins,
+                                        "val",
+                                        False,False)
+
+        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+
+        self.train_loader = self.dataset_loader(train_dataset, batch_size=self.settings.batch_size,
+                                                    device=self.settings.gpu_device,
+                                                    num_workers=self.settings.num_cpu_workers, pin_memory=True,sampler=train_sampler)
+        self.val_loader = self.dataset_loader(val_dataset, batch_size=self.settings.batch_size,
+                                                device=self.settings.gpu_device,
+                                                num_workers=self.settings.num_cpu_workers, pin_memory=True,shuffle=False)
+
+        print(f"train_loader_len: {len(self.train_loader)}, test_loader_len: {len(self.val_loader)}")
+        self.nr_train_epochs=len(self.train_loader)
+        self.nr_val_epochs=len(self.val_loader)
+        self.ori_width = train_dataset.width
+        self.ori_height = train_dataset.height
+    
+    def createDatasetsTest(self):
+        val_dataset = propheseeTafDataset(
+                                        self.settings.bbox_path,
+                                        self.settings.data_path,
+                                        self.settings.dataset_name, 
+                                        self.settings.input_img_size,
+                                        self.settings.img_size,
+                                        self.settings.infer_time, 
+                                        self.settings.event_volume_bins,
+                                        "test",
+                                        False,False)
+
+        self.object_classes = val_dataset.object_classes
+
+        self.val_loader = self.dataset_loader(val_dataset, batch_size=self.settings.batch_size,
+                                            device=self.settings.gpu_device,
+                                            num_workers=self.settings.num_cpu_workers, pin_memory=False,shuffle=False)
+
+        print(f"test_loader_len: {len(self.val_loader)}")
+        self.nr_val_epochs=len(self.val_loader)
+        self.ori_width = val_dataset.width
+        self.ori_height = val_dataset.height

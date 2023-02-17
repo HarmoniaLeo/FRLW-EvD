@@ -46,14 +46,18 @@ class DarkNet_53(nn.Module):
     def __init__(
         self, 
         in_channels=3,
+        stem = None
     ):
         super(DarkNet_53, self).__init__()
         # stride = 2
-        self.layer_1 = nn.Sequential(
-            Conv_BN_LeakyReLU(in_channels, 32, k=3, p=1),
-            Conv_BN_LeakyReLU(32, 64, k=3, p=1, s=2),
-            resblock(64, nblocks=1)
-        )
+        if stem is None:
+            self.layer_1 = nn.Sequential(
+                Conv_BN_LeakyReLU(in_channels, 32, k=3, p=1),
+                Conv_BN_LeakyReLU(32, 64, k=3, p=1, s=2),
+                resblock(64, nblocks=1)
+            )
+        else:
+            self.layer_1 = stem(in_channels, 64, ksize=3, act="silu")
         # stride = 4
         self.layer_2 = nn.Sequential(
             Conv_BN_LeakyReLU(64, 128, k=3, p=1, s=2),
