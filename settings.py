@@ -20,7 +20,7 @@ class Settings:
 
         if self.dataset_name == "gen1":
             self.img_size = [256,320]
-            self.img_size = [512,640]
+            #self.img_size = [512,640]
         elif self.dataset_name == "gen4":
             self.img_size = [512,640]
             #self.img_size = [256,320]

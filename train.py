@@ -3,7 +3,7 @@ import os
 import torch
 import numpy as np
 from settings import Setting_train_val
-from core.exp import basicExp, tafExp, yolov3, yolox, tafBFMExp
+from core.exp import basicExp, tafExp, yolov3, yolox, tafBFMExp, yolov3tafBFM, yoloxtafBFM
 
 def main():
     parser = argparse.ArgumentParser(description='Train network.')
@@ -41,7 +41,7 @@ def main():
         trainer = basicExp(settings)
     elif args.exp_type == "taf":    #Event Representation用TAF，检测器用AED
         trainer = tafExp(settings)
-    elif args.exp_type == "taf_tcn":    #Event Representation用TAF+BFM，检测器用AED
+    elif args.exp_type == "taf_bfm":    #Event Representation用TAF+BFM，检测器用AED
         trainer = tafBFMExp(settings)
     elif args.exp_type == "yolov3": #Event Representation用除TAF外其他数据，检测器用YOLOv3
         settings.input_img_size = [640,640]
@@ -49,7 +49,7 @@ def main():
         settings.init_lr = 0.0005
         settings.warmup_epochs = 2
         trainer = yolov3(settings)
-    elif args.exp_type == "yolov3": #Event Representation用TAF+BFM，检测器用YOLOv3
+    elif args.exp_type == "yolov3_taf_bfm": #Event Representation用TAF+BFM，检测器用YOLOv3
         settings.input_img_size = [640,640]
         settings.clipping = True
         settings.init_lr = 0.0005
@@ -57,7 +57,7 @@ def main():
         trainer = yolov3tafBFM(settings)
     elif args.exp_type == "yolox": #Event Representation用除TAF外其他数据，检测器用YOLOX
         trainer = yolox(settings)
-    elif args.exp_type == "yolox": #Event Representation用TAF+BFM，检测器用YOLOX
+    elif args.exp_type == "yolox_taf_bfm": #Event Representation用TAF+BFM，检测器用YOLOX
         trainer = yoloxtafBFM(settings)
     trainer.train()
 

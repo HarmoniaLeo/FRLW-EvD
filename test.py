@@ -3,7 +3,7 @@ import os
 import torch
 import numpy as np
 from settings import Setting_test
-from core.exp import basicExp, tafExp, yolov3, yolox, tafBFMExp
+from core.exp import basicExp, tafExp, yolov3, yolox, tafBFMExp, yolov3tafBFM, yoloxtafBFM
 
 def main():
     parser = argparse.ArgumentParser(description='Train network.')
