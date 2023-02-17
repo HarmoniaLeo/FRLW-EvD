@@ -323,7 +323,7 @@ class propheseeTafDataset(propheseeDataset):
         
         if self.time_channels > 4:
             ecd_file = os.path.join(os.path.join(data_root,"bins{0}".format(int(self.time_channels // 2))), self.file_name[idx]+ "_" + str(timestamp) + ".npy")
-            volume = np.fromfile(ecd_file, dtype=np.uint8).reshape(int(self.time_channels * 2), self.img_size[0], self.img_size[1]).astype(np.float32)
+            volume = np.fromfile(ecd_file, dtype=np.uint8).reshape(int(self.time_channels), self.img_size[0], self.img_size[1]).astype(np.float32)
             ecd_file2 = os.path.join(os.path.join(data_root,"bins{0}".format(int(self.time_channels))), self.file_name[idx]+ "_" + str(timestamp) + ".npy")
             volume2 = np.fromfile(ecd_file2, dtype=np.uint8).reshape(int(self.time_channels), self.img_size[0], self.img_size[1]).astype(np.float32)
             volume = np.concatenate([volume, volume2], 0)
