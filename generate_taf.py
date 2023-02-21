@@ -19,12 +19,12 @@ import torch.nn
 def taf_cuda(x, y, t, p, shape, volume_bins, past_volume):
     tick = time.time()
     H, W = shape
-    
+    #计算kernel convolution
     img = torch.zeros((H * W * 2)).float().to(x.device)
     img.index_add_(0, p + 2 * x + 2 * W * y, torch.ones_like(x).float())    #计算事件点数
     t_img = torch.zeros((H * W * 2)).float().to(x.device)
     t_img.index_add_(0, p + 2 * x + 2 * W * y, t - 1)   #聚合事件点
-    t_img = t_img/(img+1e-8)    #取均值（即计算卷积）
+    t_img = t_img/(img+1e-8)    #取均值
 
     img = img.view(H, W, 2)
     t_img = t_img.view(H, W, 2)
@@ -270,9 +270,10 @@ if __name__ == '__main__':
                 volume = volume.view(event_volume_bins, 2, target_shape[0], target_shape[1])
                 volume = leaky_transform(volume)    #计算f(.)
                 ecd = volume.cpu().numpy().copy()
-                ecd = np.flip(ecd, axis = 0)
+                ecd = np.flip(ecd, axis = 0)    #和之后读取数据的方式有关
                 #print(ecd.shape)
                 #print(ecd.mean((1,2,3)))
+                #前四和后四通道分别存放，是因为消融实验中对比了4个通道和8个通道的情况
                 if not os.path.exists(os.path.join(target_root,"bins{0}".format(int(event_volume_bins/2)))):
                     os.makedirs(os.path.join(target_root,"bins{0}".format(int(event_volume_bins/2))))
                 ecd[:4].astype(np.uint8).tofile(os.path.join(os.path.join(target_root,"bins{0}".format(int(event_volume_bins/2))),file_name+"_"+str(unique_time)+".npy")) 
