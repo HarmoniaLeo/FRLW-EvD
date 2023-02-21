@@ -21,10 +21,10 @@ def taf_cuda(x, y, t, p, shape, volume_bins, past_volume):
     H, W = shape
     
     img = torch.zeros((H * W * 2)).float().to(x.device)
-    img.index_add_(0, p + 2 * x + 2 * W * y, torch.ones_like(x).float())
+    img.index_add_(0, p + 2 * x + 2 * W * y, torch.ones_like(x).float())    #计算事件点数
     t_img = torch.zeros((H * W * 2)).float().to(x.device)
-    t_img.index_add_(0, p + 2 * x + 2 * W * y, t - 1)
-    t_img = t_img/(img+1e-8)
+    t_img.index_add_(0, p + 2 * x + 2 * W * y, t - 1)   #聚合事件点
+    t_img = t_img/(img+1e-8)    #取均值（即计算卷积）
 
     img = img.view(H, W, 2)
     t_img = t_img.view(H, W, 2)
@@ -43,7 +43,7 @@ def taf_cuda(x, y, t, p, shape, volume_bins, past_volume):
         ecd = t_img[:, :, :, None]
         ecd = torch.cat([old_ecd, ecd],dim=3)
         for i in range(1,ecd.shape[3])[::-1]:
-            ecd[:,:,:,i-1] = ecd[:,:,:,i-1] - 1
+            ecd[:,:,:,i-1] = ecd[:,:,:,i-1] - 1 #t(n)改变因此需要更新旧数值，由于#27中取了均值所以平均衰减10ms（1个基本单位）
             ecd[:,:,:,i] = torch.where(forward, ecd[:,:,:,i-1],ecd[:,:,:,i])
         if ecd.shape[3] > volume_bins:
             ecd = ecd[:,:,:,1:]
@@ -132,7 +132,7 @@ if __name__ == '__main__':
         # min_event_count = 200000
         shape = [240,304]
         target_shape = [256, 320]
-    events_window_abin = 10000
+    events_window_abin = 10000  #10ms为基本单位
     event_volume_bins = 8
     events_window = events_window_abin * event_volume_bins
 
@@ -248,7 +248,7 @@ if __name__ == '__main__':
 
                 if start_time > time_upperbound:
                     if target_shape[0] < shape[0]:
-                        memory = torch.zeros((target_shape[0], target_shape[1], 2, event_volume_bins)).cuda() - 6000
+                        memory = torch.zeros((target_shape[0], target_shape[1], 2, event_volume_bins)).cuda() - 6000    #6000个10ms，即60s（视频流长度），经f(.)变换后就会变为接近0的数值，作为事件表征中的默认值
                     else:
                         memory = torch.zeros((shape[0], shape[1], 2, event_volume_bins)).cuda() - 6000
 
@@ -268,7 +268,7 @@ if __name__ == '__main__':
                 total_count += 1
                 #print(total_time / total_count)
                 volume = volume.view(event_volume_bins, 2, target_shape[0], target_shape[1])
-                volume = leaky_transform(volume)
+                volume = leaky_transform(volume)    #计算f(.)
                 ecd = volume.cpu().numpy().copy()
                 ecd = np.flip(ecd, axis = 0)
                 #print(ecd.shape)
