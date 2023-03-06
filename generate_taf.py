@@ -93,9 +93,6 @@ if __name__ == '__main__':
     if dataset == "gen4":
         shape = [720,1280]
         target_shape = [512, 640]
-    elif dataset == "kitti":
-        shape = [375,1242]
-        target_shape = [192, 640]
     else:
         shape = [240,304]
         target_shape = [256, 320]
@@ -106,6 +103,9 @@ if __name__ == '__main__':
     rh = target_shape[0] / shape[0]
     rw = target_shape[1] / shape[1]
 
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+    target_dir = os.path.join(target_dir, "taf")
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
 

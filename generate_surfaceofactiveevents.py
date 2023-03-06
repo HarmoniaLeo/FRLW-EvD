@@ -96,14 +96,11 @@ if __name__ == '__main__':
     if dataset == "gen4":
         shape = [720,1280]
         target_shape = [512, 640]
-    elif dataset == "kitti":
-        shape = [375,1242]
-        target_shape = [192, 640]
     else:
         shape = [240,304]
         target_shape = [256, 320]
 
-    lamdas = [0.00001, 0.0000025, 0.0000001]  #lambda = 0.00001, 0.0000025, 0.0000001
+    lamdas = [0.00001, 0.0000025, 0.000001]  #lambda = 0.00001, 0.0000025, 0.000001
     time_window = [554126, 2216505, 5541263]
     
     events_window = 5000000
@@ -204,7 +201,7 @@ if __name__ == '__main__':
                         max_volume = volume
 
                 for j,i in enumerate(lamdas):
-                    save_dir = os.path.join(target_dir,"leaky{0}".format(i))
+                    save_dir = os.path.join(target_dir,"SurfaceOfActiveEvents{0}".format(i))
                     if not os.path.exists(save_dir):
                         os.makedirs(save_dir)
                     save_dir = os.path.join(save_dir, mode)

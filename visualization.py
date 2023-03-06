@@ -16,17 +16,6 @@ def generate_event_volume(ecd_file, shape, ori_shape, volume_bins):
     ecds = torch.nn.functional.interpolate(ecds, size = ori_shape, mode='nearest')[0]
     return ecds.numpy()
 
-def generate_taf_gen1(ecd_file, filename, timestamp, shape, ori_shape, volume_bins):
-    ecds = []
-    for i in range(int(volume_bins)):
-        ecd_file_ = os.path.join(os.path.join(ecd_file,"bin{0}".format(7-i)), filename+ "_" + str(timestamp) + ".npy")
-        ecd = np.fromfile(ecd_file_, dtype=np.uint8).reshape(2, shape[0], shape[1]).astype(np.float32)
-        ecds.append(ecd)
-
-    ecds = torch.from_numpy(np.concatenate(ecds, 0))[None,:,:,:]
-    ecds = torch.nn.functional.interpolate(ecds, size = ori_shape, mode='nearest')[0]
-    return ecds.numpy()
-
 def generate_taf_gen4(ecd_file, filename, timestamp, shape, ori_shape, volume_bins):
     if volume_bins == 4:
         ecd_file = os.path.join(os.path.join(ecd_file,"bins{0}".format(int(volume_bins))), filename+ "_" + str(timestamp) + ".npy")
@@ -333,13 +322,14 @@ if __name__ == '__main__':
     parser.add_argument('-bbox_path', type=str) # "train, val, test" level direcotory of the datasets, for reading annotations
     parser.add_argument('-data_path', type=str)   # data_path + ecd = "train, val, test" level direcotory of preprocessed data
     parser.add_argument('-result_path', type=str, default=None) # The path to summarise.npz. When not set, the visualization does not contain detection results
-    parser.add_argument('-tol', type = int, default=4999)   # The time tolerance between the detections and the annotations. At 4999, for example, to visualize the annotation frame at 50,000 μs, the detection frame in the range of 45001 μs to 54999 μs will be visualized at the same time
     parser.add_argument('-dataset', type = str, default="gen1") # Prophesee gen1/gen4 Dataset
     parser.add_argument('-datatype', type = str)    #TAF/SurfaceOfActiveEvent/EventCountImage/EventVolume/OpticalFlow
     parser.add_argument('-suffix', type = str)  # A suffix to distinguish parameters
-    # The visualization result will be output to "visualization/item_end_suffix_datatype.png" (without the detection frame) or "result_allinone/item_end_suffix_datatype_result.png" (with the detection frame)
+    # The visualization result will be output to "visualization/item_end_suffix_datatype.png" (without the detection frame) or "visualization/item_end_suffix_datatype_result.png" (with the detection frame)
 
     args = parser.parse_args()
+
+    tol = 4999
 
     target_path = 'visualization'
     if not os.path.exists(target_path):
@@ -380,21 +370,18 @@ if __name__ == '__main__':
 
     if datatype == "OpticalFlow":
         ecds = generate_optflow(item, time_stamp_end)
-        extract_flow(ecds,dat_bbox,dt,item,target_path,time_stamp_end,args.tol,LABELMAP,suffix)
+        extract_flow(ecds,dat_bbox,dt,item,target_path,time_stamp_end,tol,LABELMAP,suffix)
     else:
         
         if datatype == "TAF":
-            if args.dataset == "gen1":
-                ecds = generate_taf_gen1(os.path.join(data_path,data_folder), item, time_stamp_end, shape, ori_shape, args.volume_bins)
-            elif args.dataset == "gen4":
-                ecds = generate_taf_gen4(os.path.join(data_path,data_folder), item, time_stamp_end, shape, ori_shape, args.volume_bins)
-            visualizeTaf(ecds,dat_bbox,dt,item,target_path,time_stamp_end,args.tol,LABELMAP,suffix)
+            ecds = generate_taf_gen4(os.path.join(data_path,data_folder), item, time_stamp_end, shape, ori_shape, args.volume_bins)
+            visualizeTaf(ecds,dat_bbox,dt,item,target_path,time_stamp_end,tol,LABELMAP,suffix)
         else:
             ecd_file = os.path.join(os.path.join(os.path.join(data_path,args.ecd),data_folder), item+ "_" + str(time_stamp_end) + ".npy")
             ecds = generate_event_volume(ecd_file, shape, ori_shape, args.volume_bins)
             if datatype == "EventVolume":
-                visualizeVolume(ecds,dat_bbox,dt,item,target_path,time_stamp_end,args.tol,LABELMAP,suffix)
+                visualizeVolume(ecds,dat_bbox,dt,item,target_path,time_stamp_end,tol,LABELMAP,suffix)
             elif datatype == "SurfaceOfActiveEvent":
-                visualizeTimeSurface(ecds,dat_bbox,dt,item,target_path,time_stamp_end,args.tol,LABELMAP,suffix)
+                visualizeTimeSurface(ecds,dat_bbox,dt,item,target_path,time_stamp_end,tol,LABELMAP,suffix)
             elif datatype == "EventCountImage":
-                visualizeFrame(ecds,dat_bbox,dt,item,target_path,time_stamp_end,args.tol,LABELMAP,suffix)
+                visualizeFrame(ecds,dat_bbox,dt,item,target_path,time_stamp_end,tol,LABELMAP,suffix)

@@ -1,90 +1,194 @@
-## 预处理
-
-预处理将稀疏的事件流处理为Event Representation张量并进行量化后，将Event Representation以稠密或稀疏（使用位运算方法进行压缩）方式储存。训练和测试时直接读取Event Representation，可以大大压缩数据量。
-
-源事件流数据量太大，如果每个batch均读取源数据再在内存中处理为Event Representation的话会消耗大量的时间在磁盘io上，所以数据一定要先预处理再训练。
-
-生成Event Volume（稀疏）的示例：
+## 1. Setup
 
 ```shell
-python generate_eventvolume.py -raw_dir /data2/lbd/Large_Automotive_Detection_Dataset_sampling -target_dir /data2/lbd/Large_Automotive_Detection_Dataset_processed/event_volume_normal -dataset gen4 -time_window 50000 -event_volume_bins 5
+git clone git@github.com:harmonialeo/FRLW-EvD
+cd FRLW-EvD
+conda create --name FRLW-EvD --file requirements.txt
+conda active FRLW-EvD
 ```
 
-生成Event Volume（稠密）的示例：
+## 2. Dataset Download
+
+1. Go to the [1 MEGAPIXEL Event Based Dataset](https://www.prophesee.ai/2020/11/24/automotive-megapixel-event-based-dataset/) and [Prophesee GEN1 Automotive DetectionDataset](https://www.prophesee.ai/2020/01/24/prophesee-gen1-automotive-detection-dataset/) to download the datasets. 
+2. Unzip the files to get the directory in the following form: 
+
+    ```shell
+    # 1 MEGAPIXEL Dataset
+    ├── root_for_1MEGAPIXEL_Dataset
+    │   ├── Large_Automotive_Detection_Dataset
+    │   │   ├── train
+    │   │   │   ├── EVENT_STREAM_NAME_td.dat
+    │   │   │   ├── EVENT_STREAM_NAME_bbox.npy
+    │   │   │   └── ...
+    │   │   ├── val
+    │   │   │   ├── EVENT_STREAM_NAME_td.dat
+    │   │   │   ├── EVENT_STREAM_NAME_bbox.npy
+    │   │   │   └── ...
+    │   │   ├── test
+    │   │   │   ├── EVENT_STREAM_NAME_td.dat
+    │   │   │   ├── EVENT_STREAM_NAME_bbox.npy
+    │   │   │   └── ...
+    
+    # GEN1 Dataset
+    ├── root_for_GEN1_Dataset
+    │   ├── ATIS_Automotive_Detection_Dataset
+    │   │	├── detection_dataset_duration_60s_ratio_1.0
+    │   │	│   ├── train
+    │   │   │	│	├── EVENT_STREAM_NAME_td.dat
+    │	│	│   │   ├── EVENT_STREAM_NAME_bbox.npy
+    │	│	│   │	└── ...
+    │   │	│   ├── val
+    │   │   │	│	├── EVENT_STREAM_NAME_td.dat
+    │	│	│   │   ├── EVENT_STREAM_NAME_bbox.npy
+    │	│	│   │	└── ...
+    │   │	│   ├── test
+    │   │   │	│	├── EVENT_STREAM_NAME_td.dat
+    │	│	│   │   ├── EVENT_STREAM_NAME_bbox.npy
+    │	│	│   │	└── ...
+    ```
+
+## 3. Dataset Sampling (for 1MEGAPIXEL Dataset)
 
 ```shell
-python generate_eventvolume.py -raw_dir /data2/lbd/Large_Automotive_Detection_Dataset_sampling -label_dir /data2/lbd/Large_Automotive_Detection_Dataset_sampling -target_dir /data2/lbd/Large_Automotive_Detection_Dataset_processed/event_volume_normal -dataset gen4 -time_window 50000 -event_volume_bins 5
+python sampling_dataset.py -raw_dir root_for_1MEGAPIXEL_Dataset/Large_Automotive_Detection_Dataset -target_dir root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_sampling
 ```
 
-生成Event Count Image（稠密）的示例（更多参数需要到代码里调整）：
+## 4. Preprocess
+
+### 4.1 Generate Event Representation
 
 ```shell
-python generate_eventvolume.py -raw_dir /data2/lbd/Large_Automotive_Detection_Dataset_sampling -label_dir /data2/lbd/Large_Automotive_Detection_Dataset_sampling -target_dir /data2/lbd/Large_Automotive_Detection_Dataset_processed/event_volume_normal -dataset gen4
+#Generating Event Representation for 1MEGAPIXEL Dataset(Subset)
+python PREPROCESS_FOOTAGE -raw_dir root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_sampling -label_dir root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_sampling -target_dir root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_processed -dataset gen4
+
+#Generating Event Representation for GEN1 Dataset
+python PREPROCESS_FOOTAGE -raw_dir root_for_GEN1_Dataset/ATIS_Automotive_Detection_Dataset/detection_dataset_duration_60s_ratio_1.0 -label_dir root_for_GEN1_Dataset/ATIS_Automotive_Detection_Dataset/detection_dataset_duration_60s_ratio_1.0 -target_dir root_for_GEN1_Dataset/ATIS_Automotive_Detection_Dataset_processed -dataset gen1
 ```
 
-生成Surface of Active Events（稠密）的示例（更多参数需要到代码里调整）：
+| PREPROCESS_FOOTAGE                | Event Representation     |
+| --------------------------------- | ------------------------ |
+| generate_eventcountimage.py       | Event Count Image        |
+| generate_surfaceofactiveevents.py | Surface of Active Events |
+| generate_eventvolume.py           | Event Volume             |
+| generate_taf.py                   | Temporal Active Focus    |
+
+### 4.2 Motion Level Statistics
 
 ```shell
-python generate_time_surface.py -raw_dir /data2/lbd/Large_Automotive_Detection_Dataset_sampling -label_dir /data2/lbd/Large_Automotive_Detection_Dataset_sampling -target_dir /data2/lbd/Large_Automotive_Detection_Dataset_processed/event_volume_normal -dataset gen4
+# Motion Level Statistics on 1MEGAPIXEL Dataset(Subset)
+python motion_level_statistics_gt.py -raw_dir root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_sampling -dataset gen4
+
+# Motion Level Statistics on GEN1 Dataset
+python motion_level_statistics_gt.py -raw_dir root_for_GEN1_Dataset/ATIS_Automotive_Detection_Dataset/detection_dataset_duration_60s_ratio_1.0 -dataset gen1
 ```
 
-生成TAF（稠密）的示例：
+## 5. Reproduce Results
+
+The evaluation part of code is adopted from [Prophesee Automotive Dataset Toolbox](https://github.com/prophesee-ai/prophesee-automotive-dataset-toolbox). 
+
+### 5.1 Evaluation
+
+1. Download checkpoints from [Google Drive](). 
+2. Unzip it under the folder "FRLW-EvD". 
+3. ```shell
+    # Evaluation on 1MEGAPIXEL Dataset(Subset)
+    CUDA_VISIBLE_DEVICES="0", python -m torch.distributed.launch --master_port 1403 --nproc_per_node 1 test.py --record True --bbox_path root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_sampling --dataset gen4 --resume_exp EXP_NAME --exp_type EXP_TYPE --event_volume_bins EVENT_VOLUME_BINS  --data_path root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_processed/DATA_DIR 
+    
+    # Evaluation on GEN1 Dataset
+    CUDA_VISIBLE_DEVICES="0", python -m torch.distributed.launch --master_port 1403 --nproc_per_node 1 test.py --record True --bbox_path root_for_GEN1_Dataset/ATIS_Automotive_Detection_Dataset/detection_dataset_duration_60s_ratio_1.0 --dataset gen1 --resume_exp EXP_NAME --exp_type EXP_TYPE --event_volume_bins EVENT_VOLUME_BINS  --data_path root_for_GEN1_Dataset/ATIS_Automotive_Detection_Dataset_processed/DATA_DIR 
+    ```
+    | Dataset    | Model  | Event Representation     | Notes                                   | EXP_NAME                                             | EXP_TYPE       | EVENT_VOLUME_BINS | DATA_DIR                       |
+    | ---------- | ------ | ------------------------ | --------------------------------------- | ---------------------------------------------------- | -------------- | ----------------- | ------------------------------ |
+    | GEN1       | AED    | TAF                      | $K=8$                                   | AED_TAF_K8_GEN1                                      | taf            | 8                 | taf                            |
+    | GEN1       | AED    | TAF                      | $K=4$                                   | AED_TAF_K4_GEN1                                      | taf            | 4                 | taf                            |
+    | GEN1       | AED    | TAF+BFM                  | $K=8$                                   | AED_TAF_BFM_K4_GEN1                                  | taf_bfm        | 8                 | taf                            |
+    | GEN1       | AED    | TAF+BFM                  | $K=4$                                   | AED_TAF_BFM_K8_GEN1                                  | taf_bfm        | 4                 | taf                            |
+    | GEN1       | YOLOX  | Event Volume             | $\Delta\tau=50ms$; No Data Augmentation | Baseline_GEN1                                        | yolox          | 5                 | EventVolume250000              |
+    | GEN1       | YOLOX  | Event Volume             | $\Delta\tau=50ms$                       | YOLOX_EventVolume_Tau50000_GEN1                      | yolox          | 5                 | EventVolume250000              |
+    | GEN1       | YOLOX  | TAF+BFM                  | $K=4$                                   | YOLOX_TAF_BFM_K4_GEN1                                | yolox_taf_bfm  | 4                 | taf                            |
+    | GEN1       | YOLOv3 | TAF+BFM                  | $K=4$                                   | YOLOv3_TAF_BFM_K4_GEN1                               | yolov3_taf_bfm | 4                 | taf                            |
+    | GEN1       | AED    | Event Volume             | $\Delta\tau=50ms$                       | AED_EventVolume_Tau50000_GEN1                        | basic          | 5                 | EventVolume250000              |
+    | GEN1       | AED    | Event Volume             | $\Delta\tau=100ms$                      | AED_EventVolume_Tau100000_GEN1                       | basic          | 5                 | EventVolume500000              |
+    | GEN1       | AED    | Event Volume             | $\Delta\tau=200ms$                      | AED_EventVolume_Tau200000_GEN1                       | basic          | 5                 | EventVolume1000000             |
+    | GEN1       | AED    | Event Count Image        | $N=5\times 10^4$                        | AED_EventCountImage_N50000_GEN1                      | basic          | 2                 | EventCountImage50000           |
+    | GEN1       | AED    | Event Count Image        | $N=1\times10^5$                         | AED_EventCountImage_N100000_GEN1                     | basic          | 2                 | EventCountImage100000          |
+    | GEN1       | AED    | Event Count Image        | $N=2\times10^5$                         | AED_EventCountImage_N200000_GEN1                     | basic          | 2                 | EventCountImage200000          |
+    | GEN1       | AED    | Surface of Active Events | $\lambda=1\times10^{-5}$                | AED_SurfaceOfActiveEvents_lambda0.00001_GEN1         | basic          | 2                 | SurfaceOfActiveEvents0.00001   |
+    | GEN1       | AED    | Surface of Active Events | $\lambda=2.5\times10^{-6}$              | AED_SurfaceOfActiveEvents_lambda0.0000025_GEN1       | basic          | 2                 | SurfaceOfActiveEvents0.0000025 |
+    | GEN1       | AED    | Surface of Active Events | $\lambda=1\times10^{-6}$                | AED_SurfaceOfActiveEvents_lambda0.000001_GEN1        | basic          | 2                 | SurfaceOfActiveEvents0.000001  |
+    | 1MEGAPIXEL | AED    | TAF                      | $K=8$                                   | AED_TAF_K8_1MEGAPIXEL                                | taf            | 8                 | taf                            |
+    | 1MEGAPIXEL | AED    | TAF                      | $K=4$                                   | AED_TAF_K4_1MEGAPIXEL                                | taf            | 4                 | taf                            |
+    | 1MEGAPIXEL | AED    | TAF+BFM                  | $K=8$                                   | AED_TAF_BFM_K4_1MEGAPIXEL                            | taf_bfm        | 8                 | taf                            |
+    | 1MEGAPIXEL | AED    | TAF+BFM                  | $K=4$                                   | AED_TAF_BFM_K8_1MEGAPIXEL                            | taf_bfm        | 4                 | taf                            |
+    | 1MEGAPIXEL | YOLOX  | Event Volume             | $\Delta\tau=50ms$; No Data Augmentation | Baseline_1MEGAPIXEL                                  | yolox          | 5                 | EventVolume250000              |
+    | 1MEGAPIXEL | YOLOX  | Event Volume             | $\Delta\tau=50ms$                       | YOLOX_EventVolume_Tau50000_1MEGAPIXEL                | yolox          | 5                 | EventVolume250000              |
+    | 1MEGAPIXEL | YOLOX  | TAF+BFM                  | $K=4$                                   | YOLOX_TAF_BFM_K4_1MEGAPIXEL                          | yolox_taf_bfm  | 4                 | taf                            |
+    | 1MEGAPIXEL | YOLOv3 | Event Volume             | $\Delta\tau=50ms$                       | YOLOv3_EventVolume_Tau50000_1MEGAPIXEL               | yolov3         | 5                 | EventVolume250000              |
+    | 1MEGAPIXEL | YOLOv3 | TAF+BFM                  | $K=4$                                   | YOLOv3_TAF_BFM_K4_1MEGAPIXEL                         | yolov3_taf_bfm | 4                 | taf                            |
+    | 1MEGAPIXEL | AED    | Event Volume             | $\Delta\tau=50ms$                       | AED_EventVolume_Tau50000_1MEGAPIXEL                  | basic          | 5                 | EventVolume250000              |
+    | 1MEGAPIXEL | AED    | Event Volume             | $\Delta\tau=100ms$                      | AED_EventVolume_Tau100000_1MEGAPIXEL                 | basic          | 5                 | EventVolume500000              |
+    | 1MEGAPIXEL | AED    | Event Volume             | $\Delta\tau=200ms$                      | AED_EventVolume_Tau200000_1MEGAPIXEL                 | basic          | 5                 | EventVolume1000000             |
+    | 1MEGAPIXEL | AED    | Event Count Image        | $N=4\times 10^5$                        | AED_EventCountImage_N400000_1MEGAPIXEL               | basic          | 2                 | EventCountImage400000          |
+    | 1MEGAPIXEL | AED    | Event Count Image        | $N=8\times10^5$                         | AED_EventCountImage_N800000_1MEGAPIXEL               | basic          | 2                 | EventCountImage800000          |
+    | 1MEGAPIXEL | AED    | Event Count Image        | $N=1.2\times10^6$                       | AED_EventCountImage_N1200000_1MEGAPIXEL              | basic          | 2                 | EventCountImage1200000         |
+    | 1MEGAPIXEL | AED    | Surface of Active Events | $\lambda=1\times10^{-5}$                | AED_SurfaceOfActiveEvents_lambda0.00001_1MEGAPIXEL   | basic          | 2                 | SurfaceOfActiveEvents0.00001   |
+    | 1MEGAPIXEL | AED    | Surface of Active Events | $\lambda=2.5\times10^{-6}$              | AED_SurfaceOfActiveEvents_lambda0.0000025_1MEGAPIXEL | basic          | 2                 | SurfaceOfActiveEvents0.0000025 |
+    | 1MEGAPIXEL | AED    | Surface of Active Events | $\lambda=1\times10^{-6}$                | AED_SurfaceOfActiveEvents_lambda0.000001_1MEGAPIXEL  | basic          | 2                 | SurfaceOfActiveEvents0.000001  |
+
+### 5.2 Motion Level Evaluation
 
 ```shell
-python generate_taf.py -raw_dir /data2/lbd/Large_Automotive_Detection_Dataset_sampling -label_dir /data2/lbd/Large_Automotive_Detection_Dataset_sampling -target_dir /data2/lbd/Large_Automotive_Detection_Dataset_processed/taf -dataset gen4
+# Evaluation on 1MEGAPIXEL Dataset(Subset)
+python motion_level_statistics_dt.py -raw_dir root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_sampling -dataset gen4 -exp_name EXP_NAME
+python motion_level_evaluation.py -dataset gen4 -exp_name EXP_NAME
+
+# Evaluation on GEN1 Dataset
+python motion_level_statistics_dt.py -raw_dir root_for_GEN1_Dataset/ATIS_Automotive_Detection_Dataset/detection_dataset_duration_60s_ratio_1.0 -dataset gen1 -exp_name EXP_NAME
+python motion_level_evaluation.py -dataset gen1 -exp_name EXP_NAME
 ```
 
-## 运行
-
-训练的示例：
+## 6. Training from Scratch
 
 ```shell
-CUDA_VISIBLE_DEVICES="0,1,2,3", python -m torch.distributed.launch --master_port 1403 --nproc_per_node 4 train.py --exp_name gen4_taf --exp_type taf --dataset gen4 --dataset_path /datassd4t/lbd/Large_Automotive_Detection_Dataset_sampling --taf_dataset_path /datassd4t/lbd/Large_taf  --batch_size 8
+# Training on 1MEGAPIXEL Dataset(Subset)
+CUDA_VISIBLE_DEVICES="0", python -m torch.distributed.launch --master_port 1403 --nproc_per_node 1 train.py --bbox_path root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_sampling --dataset gen4 --batch_size 16 --augmentation True --exp_name EXP_NAME --exp_type EXP_TYPE --event_volume_bins EVENT_VOLUME_BINS  --data_path root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_processed/DATA_DIR --nodes 1
+
+# Training on GEN1 Dataset
+CUDA_VISIBLE_DEVICES="0", python -m torch.distributed.launch --master_port 1403 --nproc_per_node 1 train.py --bbox_path root_for_GEN1_Dataset/ATIS_Automotive_Detection_Dataset/detection_dataset_duration_60s_ratio_1.0 --dataset gen1 --batch_size 30 --augmentation True --exp_name EXP_NAME --exp_type EXP_TYPE --event_volume_bins EVENT_VOLUME_BINS  --data_path root_for_GEN1_Dataset/ATIS_Automotive_Detection_Dataset_processed/DATA_DIR --nodes 1
 ```
 
-测试的示例：
+* Resume training: Change "--exp_name EXP_NAME" to" --resume_exp EXP_NAME"
+* Distribute training (4 GPUs for example): 
+  1. Change "CUDA_VISIBLE_DEVICES="0"" to "CUDA_VISIBLE_DEVICES="0,1,2,3""
+  2. Change "--nproc_per_node 1" to "--nproc_per_node 4"
+  3. Change "--nodes 1" to "--nodes 4"
+
+## 7. Visualization
 
 ```shell
-CUDA_VISIBLE_DEVICES="0", python -m torch.distributed.launch --master_port 1403 --nproc_per_node 1 test.py --resume_exp basic --exp_type basic --record True
+# Visualization on 1MEGAPIXEL Dataset(Subset)
+python visualization.py -item EVENT_STREAM_NAME -end ANNOTATION_TIMESTAMP -volume_bins VOLUME_BINS -ecd DATA_DIR -bbox_path root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_sampling -data_path root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_processed -result_path log/EXP_NAME/summarise.npz -datatype DATA_TYPE -suffix DATADIR -dataset gen4
+
+# Visualization on GEN1 Dataset
+python visualization.py -item EVENT_STREAM_NAME -end ANNOTATION_TIMESTAMP -volume_bins VOLUME_BINS -ecd DATA_DIR -bbox_path root_for_GEN1_Dataset/ATIS_Automotive_Detection_Dataset/detection_dataset_duration_60s_ratio_1.0 -data_path root_for_GEN1_Dataset/ATIS_Automotive_Detection_Dataset_processed/DATA_DIR -result_path log/EXP_NAME/summarise.npz -datatype DATA_TYPE -suffix DATADIR -dataset gen1
 ```
 
-参数说明请参考`train.py`和`test.py`里的注释
+| Event Representation     | Notes                      | DATA_TYPE            | VOLUME_BINS | DATA_DIR                       |
+| ------------------------ | -------------------------- | -------------------- | ----------- | ------------------------------ |
+| Event Count Image        | $N = 5\times10^4$          | EventCountImage      | 1           | EventCountImage50000           |
+| Event Count Image        | $N = 1\times10^5$          | EventCountImage      | 1           | EventCountImage100000          |
+| Event Count Image        | $N = 2\times10^5$          | EventCountImage      | 1           | EventCountImage200000          |
+| Event Count Image        | $N = 4\times10^5$          | EventCountImage      | 1           | EventCountImage400000          |
+| Event Count Image        | $N = 8\times10^5$          | EventCountImage      | 1           | EventCountImage800000          |
+| Event Count Image        | $N = 1.2\times10^6$        | EventCountImage      | 1           | EventCountImage1200000         |
+| Surface of Active Events | $\lambda=1\times10^{-5}$   | SurfaceOfActiveEvent | 1           | SurfaceOfActiveEvents0.00001   |
+| Surface of Active Events | $\lambda=2.5\times10^{-6}$ | SurfaceOfActiveEvent | 1           | SurfaceOfActiveEvents0.0000025 |
+| Surface of Active Events | $\lambda=1\times10^{-6}$   | SurfaceOfActiveEvent | 1           | SurfaceOfActiveEvents0.000001  |
+| Event Volume             | $\Delta\tau=50ms$          | EventVolume          | 5           | EventVolume250000              |
+| Event Volume             | $\Delta\tau=100ms$         | EventVolume          | 5           | EventVolume500000              |
+| Event Volume             | $\Delta\tau=200ms$         | EventVolume          | 5           | EventVolume1000000             |
+| Temporal Active Focus    | $K=4$                      | TAF                  | 4           | taf                            |
+| Temporal Active Focus    | $K=8$                      | TAF                  | 8           | taf                            |
 
-## 可视化
-
-稠密数据可视化示例：
-
-```shell
-python lookup_allinone.py -item 17-04-13_15-05-43_3660500000_3720500000 -end 12599999 -volume_bins 1 -ecd leaky1e-05 -bbox_path /data/lbd/ATIS_Automotive_Detection_Dataset/detection_dataset_duration_60s_ratio_1.0 -data_path /data/lbd/ATIS_Automotive_Detection_Dataset_processed/leaky -datatype timesurface -suffix leaky1e5 -result_path /home/lbd/100-fps-event-det/log/basic_leaky1e5/summarise.npz
-```
-
-Event Volume稀疏数据可视化示例：
-
-```shell
-python lookup_dataset.py -item 17-04-13_15-05-43_2074500000_2134500000 -end 1099999 -dataset gen1 -suffix volume250000_nobbox -data_path /data/lbd/ATIS_Automotive_Detection_Dataset_processed/long -bbox_path /data/lbd/ATIS_Automotive_Detection_Dataset/detection_dataset_duration_60s_ratio_1.0 -result_path /home/lbd/100-fps-event-det/log/basic_long_pp/summarise.npz
-```
-
-参数说明请参考`lookup_allinonoe.py`和`lookup_dataset.py`里的注释
-
-## 速度等级分类统计
-
-大部分参数需要改代码来设定
-
-统计标注框光流示例（一个数据集只需要运行一次）：
-
-```shell
-python optical_statistics_gt.py -dataset gen1
-```
-
-统计检测框光流示例（每个实验需要运行一次，需要运行带record的test后才可进行）：
-
-```shell
-python optical_statistics_dt.py -dataset gen1 -exp_name basic
-```
-
-按速度等级分类的精度统计（需要完成以上两步骤后才可进行）：
-
-```shell
-python optical_evaluate.py -dataset gen1 -exp_name basic
-```
-
+* Visulize without the detection result: Do not set the parameter "-result_path"
+* The visualization result will be output to "visualization/item_end_suffix_datatype.png" (without the detection result) or "visualization/item_end_suffix_datatype_result.png" (with the detection result)
