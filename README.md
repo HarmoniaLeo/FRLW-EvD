@@ -88,7 +88,7 @@ The evaluation part of code is adopted from [Prophesee Automotive Dataset Toolbo
 
 ### 5.1 Evaluation
 
-1. Download checkpoints from [Google Drive](). 
+1. Download checkpoints from [Google Drive](https://drive.google.com/file/d/1GDMgkPQugfy2rtk_C0DWAx1y6peo8bG0/view?usp=sharing). 
 2. Unzip it under the folder "FRLW-EvD". 
 3. ```shell
     # Evaluation on 1MEGAPIXEL Dataset(Subset)
