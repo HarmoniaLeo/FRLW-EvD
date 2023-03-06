@@ -238,33 +238,7 @@ class propheseeDataset:
 
         return img, padded_labels, self.file_name[idx], self.sequence_end_t[idx]
     
-    # def load_data(self,idx):
-    #     data_root = os.path.join(self.data_dir, self.mode)
-    #     timestamp = self.sequence_end_t[idx]
-    #     event_file = os.path.join(data_root, self.file_name[idx]+ "_" + str(timestamp) + ".npy")
-        
-    #     try:
-    #         volume_t = np.fromfile(event_file, dtype=np.uint8).reshape(self.time_channels * 2, self.img_size[0], self.img_size[1]).astype(np.float32)
-    #     except Exception:
-    #         locations = np.fromfile(event_file, dtype=np.int32)
-    #         x = np.bitwise_and(locations, 1023).astype(int)
-    #         y = np.right_shift(np.bitwise_and(locations, 523264), 10).astype(int)
-    #         c = np.right_shift(np.bitwise_and(locations, 3670016), 19).astype(int)
-    #         p = np.right_shift(np.bitwise_and(locations, 4194304), 22).astype(int)
-    #         features = np.right_shift(np.bitwise_and(locations, 2139095040), 23).astype(int)
-
-    #         H, W = self.img_size
-
-    #         feature_map = np.zeros((int(self.time_channels) * H * W * 2),dtype=np.float32)
-    #         np.add.at(feature_map, c * H * W * 2 + y * W * 2 + x * 2 + p, features)
-
-    #         volume_t = feature_map.reshape(int(self.time_channels), H, W, 2)
-
-    #         volume_t = volume_t.transpose(0,3,1,2).reshape(volume_t.shape[0] * volume_t.shape[3], volume_t.shape[1], volume_t.shape[2])
-
-    #     return volume_t
-    
-    def load_data(self, idx):   #读取稠密数据，如果要读取稀疏数据则注释掉这个load_data，换成上面那个
+    def load_data(self, idx):
         data_root = os.path.join(self.data_dir, self.mode)
         timestamp = self.sequence_end_t[idx]
 

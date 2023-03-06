@@ -106,29 +106,6 @@ def generate_event_frame_cuda(events, B, shape, iter, past_volume = None, events
 
     return histogram, None
 
-# def generate_event_frame_cuda(events, B, shape, iter, past_volume = None, events_window = 50000, volume_bins=5, infer_time = 10000):
-#     """
-#     Events: N x 4, where cols are x, y, t, polarity, and polarity is in {0,1}. x and y correspond to image
-#     coordinates u and v.
-#     """
-#     H, W = shape
-#     b, x, y, t, p = events.unbind(-1)
-
-#     b, x, y, p = b.long(), x.long(), y.long(), p.long()
-
-#     img_pos = torch.zeros((B * H * W,)).float().to(x.device)
-#     img_neg = torch.zeros((B * H * W,)).float().to(x.device)
-
-#     img_pos.index_add_(0, H * W * b[p == 1] + x[p == 1] + W * y[p == 1], torch.zeros_like(x[p == 1]).float() + 0.05)
-#     img_neg.index_add_(0, H * W * b[p == 0] + x[p == 0] + W * y[p == 0], torch.zeros_like(x[p == 0]).float() + 0.05)
-
-#     img_pos = torch.where(img_pos>1,torch.ones_like(img_pos).float(),img_pos)
-#     img_neg = torch.where(img_neg>1,torch.ones_like(img_neg).float(),img_neg)
-
-#     histogram = torch.stack([img_neg, img_pos], -1).view((B, H, W, 2, 1)).permute(0, 3, 1, 2, 4).contiguous()
-
-#     return histogram, None
-
 def sparseToDense(locations,features,shape):
     B, H, W = shape
     C = features.shape[-1]

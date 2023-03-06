@@ -60,8 +60,6 @@ def generate_frame(events, shape, events_window = 50000, volume_bins=5):
 
     img_viewed = img.view((H, W, img.shape[1] * 2)).permute(2, 0, 1).contiguous()
 
-    # print(torch.quantile(img_viewed[img_viewed>0],0.95))
-
     img_viewed = img_viewed / 5 * 255
 
     return img_viewed
@@ -69,10 +67,10 @@ def generate_frame(events, shape, events_window = 50000, volume_bins=5):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
     description='visualize one or several event files along with their boxes')
-    parser.add_argument('-raw_dir', type=str)   #数据集到train, val, test这一级的目录，作为源数据
-    parser.add_argument('-label_dir', type=str) #数据集到train, val, test这一级的目录，用于读取标签
-    parser.add_argument('-target_dir', type=str)    #输出数据的目标目录
-    parser.add_argument('-dataset', type=str, default="gen4")   #prophesee gen1/gen4数据集
+    parser.add_argument('-raw_dir', type=str)   # "train, val, test" level direcotory of the datasets, for data source
+    parser.add_argument('-label_dir', type=str) # "train, val, test" level direcotory of the datasets, for reading annotations
+    parser.add_argument('-target_dir', type=str)    # Data output directory
+    parser.add_argument('-dataset', type=str, default="gen4")   # Perform experiment on Prophesee gen1/gen4 dataset
 
     args = parser.parse_args()
     raw_dir = args.raw_dir
@@ -80,23 +78,14 @@ if __name__ == '__main__':
     target_dir = args.target_dir
     dataset = args.dataset
 
-    
-
     if dataset == "gen4":
-        # min_event_count = 800000
         shape = [720,1280]
         target_shape = [512, 640]
-        events_windows = [400000]
-    elif dataset == "kitti":
-        # min_event_count = 800000
-        shape = [375,1242]
-        target_shape = [192, 640]
+        events_windows = [400000, 800000, 1200000]  # N = 400000, 800000, 1200000
     else:
-        # min_event_count = 200000
         shape = [240,304]
         target_shape = [256, 320]
-        events_windows = [100000]
-    #events_window = 500000
+        events_windows = [50000, 100000, 200000]  # N = 50000, 100000, 200000
     
 
     rh = target_shape[0] / shape[0]
@@ -109,34 +98,23 @@ if __name__ == '__main__':
         file_dir = os.path.join(raw_dir, mode)
         root = file_dir
         label_root = os.path.join(label_dir, mode)
-        target_root = os.path.join(target_dir, mode)
-        if not os.path.exists(target_root):
-            os.makedirs(target_root)
         try:
             files = os.listdir(file_dir)
         except Exception:
             continue
-        # Remove duplicates (.npy and .dat)
-        # files = files[int(2*len(files)/3):]
-        #files = files[int(len(files)/3):]g
         files = [time_seq_name[:-7] for time_seq_name in files
                         if time_seq_name[-3:] == 'dat']
 
         pbar = tqdm.tqdm(total=len(files), unit='File', unit_scale=True)
 
-        total_time = 0
-        total_count = 0
+        if mode == "test":
+            total_time = [0 for i in events_windows]
+            total_count = [0 for i in events_windows]
 
         for i_file, file_name in enumerate(files):
 
-            # if not file_name == "17-04-13_15-05-43_3599500000_3659500000":
-            #     continue
-            # if not file_name == "moorea_2019-06-26_test_02_000_1708500000_1768500000":
-            #     continue
-
             event_file = os.path.join(root, file_name + '_td.dat')
             bbox_file = os.path.join(label_root, file_name + '_bbox.npy')
-            #h5 = h5py.File(volume_save_path, "w")
             f_bbox = open(bbox_file, "rb")
             start, v_type, ev_size, size, dtype = npy_events_tools.parse_header(f_bbox)
             dat_bbox = np.fromfile(f_bbox, dtype=v_type, count=-1)
@@ -146,13 +124,10 @@ if __name__ == '__main__':
 
             f_event = psee_loader.PSEELoader(event_file)
 
-            #min_event_count = f_event.event_count()
             count_upper_bound = -100000000
             memory = None
 
             for bbox_count,unique_time in enumerate(unique_ts):
-                # if os.path.exists(os.path.join(os.path.join(os.path.join(target_dir,"e2vid"), mode),file_name+"_"+str(unique_time)+".npy")):
-                #     continue
                 end_time = int(unique_time)
                 end_count = f_event.seek_time(end_time)
                 if end_count is None:
@@ -176,7 +151,7 @@ if __name__ == '__main__':
                 memory = events[-np.max(events_windows):]
                 count_upper_bound = end_count
 
-                for events_window in events_windows:
+                for i,events_window in enumerate(events_windows):
                 
                     events_ = events[-events_window:].clone()
                     
@@ -188,14 +163,15 @@ if __name__ == '__main__':
                         volume, generate_time = generate_eventframe(events_, shape)
                         volume = torch.nn.functional.interpolate(volume[None,:,:,:], size = target_shape, mode='nearest')[0]
                     
-                    total_time += generate_time
-                    total_count += 1
-                    #print(total_time / total_count)
+                    if mode == "test":
+                        total_time[i] += generate_time
+                        total_count[i] += 1
+                    
 
-                    save_dir = os.path.join(target_dir,"frame{0}".format(events_window))
-                    if not os.path.exists(save_dir):
-                        os.makedirs(save_dir)
-                    save_dir = os.path.join(save_dir, mode)
+                    ecd_dir = os.path.join(target_dir,"EventCountImage{0}".format(events_window))
+                    if not os.path.exists(ecd_dir):
+                        os.makedirs(ecd_dir)
+                    save_dir = os.path.join(ecd_dir, mode)
                     if not os.path.exists(save_dir):
                         os.makedirs(save_dir)
                     
@@ -204,10 +180,8 @@ if __name__ == '__main__':
                     ecd.astype(np.uint8).tofile(os.path.join(save_dir,file_name+"_"+str(unique_time)+".npy"))
                             
                 torch.cuda.empty_cache()
-            #h5.close()
             pbar.update(1)
         pbar.close()
-        # if mode == "test":
-        #     np.save(os.path.join(root, 'total_volume_time.npy'),np.array(total_volume_time))
-        #     np.save(os.path.join(root, 'total_taf_time.npy'),np.array(total_taf_time))
-        #h5.close()
+    print("Average Representation time: ")
+    for i,events_window in enumerate(events_windows):
+        print(events_windows, total_time[i] / total_count[i])

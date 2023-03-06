@@ -7,20 +7,19 @@ from core.exp import basicExp, tafExp, yolov3, yolox, tafBFMExp, yolov3tafBFM, y
 
 def main():
     parser = argparse.ArgumentParser(description='Train network.')
-    parser.add_argument("--local_rank", type=int,help='local rank for DistributedDataParallel') #不需要设置
-    parser.add_argument('--resume_exp') #测试的实验名（需要是已经有checkpoint的实验）
-    parser.add_argument('--exp_type', default="basic")   #后面详细说明
-    parser.add_argument('--log_path',default="log/")   #读取断点的路径
-    parser.add_argument('--record',type=bool)   #是否记录bounding box。选择true会在log_path下生成一个summarise.npz
+    parser.add_argument("--local_rank", type=int,help='local rank for DistributedDataParallel') # No need to set
+    parser.add_argument('--resume_exp') # Name of experiment to resume
+    parser.add_argument('--exp_type', default="basic")   # The experiment type to perform
+    parser.add_argument('--log_path',default="log/")   # Directory of saving record and loading checkpoints
+    parser.add_argument('--record',type=bool)   # Setting true will generate a summarise.npz under log_path for visualization and motion level evaluation
 
-    parser.add_argument('--dataset', default="gen1")    #prophesee gen1/gen4数据集
-    parser.add_argument('--bbox_path', default="/data/lbd/ATIS_Automotive_Detection_Dataset/detection_dataset_duration_60s_ratio_1.0")  #数据集到train, val, test这一级的目录，用来读取标签
-    parser.add_argument('--data_path', default="/data/lbd/ATIS_Automotive_Detection_Dataset_processed/normal")  #预处理数据到train, val, test这一级的目录
-    #parser.add_argument('--ecd', type=str)
-    parser.add_argument('--event_volume_bins', type=int, default=5) #这个数乘2（极性）就是channel数，需要根据Event Representation实际的通道数调整
-    parser.add_argument('--batch_size', type=int, default=30)   #测试的情况下没有影响，按显存来就行
-    parser.add_argument('--num_cpu_workers', type=int, default=-1)  #一般默认就行
-    parser.add_argument('--nodes', type=int, default=1) #测试就用一张卡就行，所以这个设1就行
+    parser.add_argument('--dataset', default="gen1")    # Perform experiment on Prophesee gen1/gen4 dataset
+    parser.add_argument('--bbox_path')  # "train, val, test" level direcotory of the datasets, for reading annotations
+    parser.add_argument('--data_path')  # "train, val, test" level direcotory of preprocessed data
+    parser.add_argument('--event_volume_bins', type=int, default=5) # This number multiplied by 2 (polarity) is the number of channels, which needs to be adjusted according to the actual number of channels of Event Representation
+    parser.add_argument('--batch_size', type=int, default=1)   # Use 1 for inference speed testing
+    parser.add_argument('--num_cpu_workers', type=int, default=-1)  # Number of CPU workers for dataloaders
+    parser.add_argument('--nodes', type=int, default=1) # Number of GPU used for distributing testing (usually 1)
     
 
     args = parser.parse_args()
@@ -34,21 +33,21 @@ def main():
     torch.backends.cudnn.deterministic = True
 
     settings = Setting_test(args)
-    if args.exp_type == "basic":    #Event Representation用除TAF外其他数据，检测器用AED
+    if args.exp_type == "basic":    # Event Representation with data other than TAF, detector with AED
         trainer = basicExp(settings)
-    elif args.exp_type == "taf":    #Event Representation用TAF，检测器用AED
+    elif args.exp_type == "taf":    # Event Representation with TAF, detector with AED
         trainer = tafExp(settings)
-    elif args.exp_type == "taf_bfm":    #Event Representation用TAF+BFM，检测器用AED
+    elif args.exp_type == "taf_bfm":    # Event Representation with TAF+BFM, detector with AED
         trainer = tafBFMExp(settings)
-    elif args.exp_type == "yolov3": #Event Representation用除TAF外其他数据，检测器用YOLOv3
+    elif args.exp_type == "yolov3": # Event Representation with data other than TAF, detector with YOLOv3
         settings.input_img_size = [640,640]
         trainer = yolov3(settings)
-    elif args.exp_type == "yolov3_taf_bfm": #Event Representation用TAF+BFM，检测器用YOLOv3
+    elif args.exp_type == "yolov3_taf_bfm": # Event Representation with TAF+BFM, detector with YOLOv3
         settings.input_img_size = [640,640]
         trainer = yolov3tafBFM(settings)
-    elif args.exp_type == "yolox": #Event Representation用除TAF外其他数据，检测器用YOLOX
+    elif args.exp_type == "yolox": # Event Representation with data other than TAF, detector with YOLOX
         trainer = yolox(settings)
-    elif args.exp_type == "yolox_taf_bfm": #Event Representation用TAF+BFM，检测器用YOLOX
+    elif args.exp_type == "yolox_taf_bfm": # Event Representation with TAF+BFM, detector with YOLOX
         trainer = yoloxtafBFM(settings)
     trainer.test()
 

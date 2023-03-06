@@ -52,17 +52,8 @@ class Setting_train_val(Settings):
 
         # --- checkpoint ---
 
-        if not(args.finetune_exp is None):
-            self.finetune = True
-        else:
-            self.finetune = False
-
         if self.resume_training:
             self.resume_ckpt_file = os.path.join(args.log_path + args.resume_exp, 'checkpoints/last_epoch.pth')
-
-        if self.finetune:
-            self.finetune_backbone_file = os.path.join(args.log_path + args.finetune_exp, 'checkpoints/best_epoch_backbone.pth')
-            self.finetune_neck_file = os.path.join(args.log_path + args.finetune_exp, 'checkpoints/best_epoch_neck.pth')
 
         if args.exp_name is None:
             if args.resume_exp is None:
@@ -90,7 +81,7 @@ class Setting_train_val(Settings):
         if self.dataset_name == "gen4":
             self.max_epoch_to_stop = 50
         else:
-            self.max_epoch_to_stop = 50
+            self.max_epoch_to_stop = 35
         #self.max_epoch = 30
         self.warmup_epochs = 5
         self.init_lr = 0.0133333 / 64.0 * self.batch_size * args.nodes
@@ -109,7 +100,6 @@ class Setting_test(Settings):
     def __init__(self, args):
         super().__init__(args)
         
-        self.finetune = False
         self.augment = False
 
         self.resume_ckpt_file = os.path.join(args.log_path + args.resume_exp, 'checkpoints/best_epoch.pth')

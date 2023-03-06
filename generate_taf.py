@@ -19,12 +19,12 @@ import torch.nn
 def taf_cuda(x, y, t, p, shape, volume_bins, past_volume):
     tick = time.time()
     H, W = shape
-    #计算kernel convolution
+
     img = torch.zeros((H * W * 2)).float().to(x.device)
-    img.index_add_(0, p + 2 * x + 2 * W * y, torch.ones_like(x).float())    #计算事件点数
+    img.index_add_(0, p + 2 * x + 2 * W * y, torch.ones_like(x).float())
     t_img = torch.zeros((H * W * 2)).float().to(x.device)
-    t_img.index_add_(0, p + 2 * x + 2 * W * y, t - 1)   #聚合事件点
-    t_img = t_img/(img+1e-8)    #取均值
+    t_img.index_add_(0, p + 2 * x + 2 * W * y, t - 1)
+    t_img = t_img/(img+1e-8)
 
     img = img.view(H, W, 2)
     t_img = t_img.view(H, W, 2)
@@ -43,7 +43,7 @@ def taf_cuda(x, y, t, p, shape, volume_bins, past_volume):
         ecd = t_img[:, :, :, None]
         ecd = torch.cat([old_ecd, ecd],dim=3)
         for i in range(1,ecd.shape[3])[::-1]:
-            ecd[:,:,:,i-1] = ecd[:,:,:,i-1] - 1 #t(n)改变因此需要更新旧数值，由于#27中取了均值所以平均衰减10ms（1个基本单位）
+            ecd[:,:,:,i-1] = ecd[:,:,:,i-1] - 1
             ecd[:,:,:,i] = torch.where(forward, ecd[:,:,:,i-1],ecd[:,:,:,i])
         if ecd.shape[3] > volume_bins:
             ecd = ecd[:,:,:,1:]
@@ -66,52 +66,22 @@ def generate_taf_cuda(events, shape, past_volume = None, volume_bins=5):
 
     return histogram_ecd, past_volume, generate_time
 
-# def quantile_transform(ecd, head = [70], tail = 10):
-#     ecd = ecd.clone()
-#     ecd_view = ecd[ecd > -1e8]
-#     qs = torch.quantile(ecd_view, torch.tensor([tail] + head).to(ecd_view.device)/100)
-#     q100 = torch.max(ecd_view)
-#     q10 = qs[None, None, None, None, 0:1]
-#     qs = qs[None, None, None, None, 1:]
-#     ecd = [ecd for i in range(len(head))]
-#     ecd = torch.stack(ecd, dim = -1)
-#     ecd = torch.where(ecd > qs, (ecd - qs) / (q100 - qs + 1e-8) * 2, ecd)
-#     ecd = torch.where((ecd <= qs)&(ecd > - 1e8), (ecd - qs) / (qs - q10 + 1e-8) * 6, ecd)
-#     ecd = torch.exp(ecd) / 7.389 * 255
-#     ecd = torch.where(ecd > 255, torch.zeros_like(ecd) + 255, ecd)
-#     return ecd
-
-# def quantile_transform(ecd, tail = 10):
-#     ecd_view = ecd[ecd > -1e8]
-#     q10 = torch.quantile(ecd_view, tail/100)
-#     max_length = -q10
-#     ecd = leaky_transform(ecd, max_length)
-#     return ecd
-
 def leaky_transform(ecd):
     
     ecd = ecd.clone()
-    #print("raw",ecd.max(),ecd.min())
     ecd = torch.log1p(-ecd)
-    #print("log1p",ecd.max(),ecd.min())
     ecd = 1 - ecd / 8.7
-    #print("transform",ecd.max(),ecd.min())
     ecd = torch.where(ecd < 0, torch.zeros_like(ecd), ecd)
-    #print("limit",ecd.max(),ecd.min())
-    #ecd = ecd * ecd / (torch.sum(ecd, dim = 0, keepdim=True) + 1e-8)
-    #print("encode",ecd.max(),ecd.min())
-    #ecd = ecd / ecd.max()
     ecd = ecd * 255
-    #print("scaling",ecd.max(),ecd.min())
     return ecd
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
     description='visualize one or several event files along with their boxes')
-    parser.add_argument('-raw_dir', type=str)   #数据集到train, val, test这一级的目录，作为源数据
-    parser.add_argument('-label_dir', type=str) #数据集到train, val, test这一级的目录，用于读取标签
-    parser.add_argument('-target_dir', type=str)    #输出数据的目标目录
-    parser.add_argument('-dataset', type=str, default="gen4")   #prophesee gen1/gen4数据集
+    parser.add_argument('-raw_dir', type=str)   # "train, val, test" level direcotory of the datasets, for data source
+    parser.add_argument('-label_dir', type=str) # "train, val, test" level direcotory of the datasets, for reading annotations
+    parser.add_argument('-target_dir', type=str)    # Data output directory
+    parser.add_argument('-dataset', type=str, default="gen4")   # Perform experiment on Prophesee gen1/gen4 dataset
 
     args = parser.parse_args()
     raw_dir = args.raw_dir
@@ -121,18 +91,15 @@ if __name__ == '__main__':
 
     min_event_count = 50000000
     if dataset == "gen4":
-        # min_event_count = 800000
         shape = [720,1280]
         target_shape = [512, 640]
     elif dataset == "kitti":
-        # min_event_count = 800000
         shape = [375,1242]
         target_shape = [192, 640]
     else:
-        # min_event_count = 200000
         shape = [240,304]
         target_shape = [256, 320]
-    events_window_abin = 10000  #10ms为基本单位
+    events_window_abin = 10000  #Delta tau = 10ms
     event_volume_bins = 8
     events_window = events_window_abin * event_volume_bins
 
@@ -142,7 +109,7 @@ if __name__ == '__main__':
     if not os.path.exists(target_dir):
         os.makedirs(target_dir)
 
-    for mode in ["train","val"]:
+    for mode in ["train","val","test"]:
         file_dir = os.path.join(raw_dir, mode)
         root = file_dir
         label_root = os.path.join(label_dir, mode)
@@ -154,8 +121,6 @@ if __name__ == '__main__':
         except Exception:
             continue
         # Remove duplicates (.npy and .dat)
-        # files = files[int(2*len(files)/3):]
-        #files = files[int(len(files)/3):]
         files = [time_seq_name[:-7] for time_seq_name in files
                         if time_seq_name[-3:] == 'dat']
 
@@ -171,14 +136,11 @@ if __name__ == '__main__':
 
         pbar = tqdm.tqdm(total=total_length, unit='File', unit_scale=True)
 
-        total_time = 0
-        total_count = 0
+        if mode == "test":
+            total_time = 0
+            total_count = 0
 
         for i_file, file_name in enumerate(files):
-            # if not file_name == "17-04-13_15-05-43_3599500000_3659500000":
-            #     continue
-            # if not file_name == "moorea_2019-06-26_test_02_000_1708500000_1768500000":
-            #     continue
             event_file = os.path.join(root, file_name + '_td.dat')
             bbox_file = os.path.join(label_root, file_name + '_bbox.npy')
             f_bbox = open(bbox_file, "rb")
@@ -195,12 +157,7 @@ if __name__ == '__main__':
             already = False
             sampling = False
 
-            #min_event_count = f_event.event_count()
-
             for bbox_count,unique_time in enumerate(unique_ts):
-                # if os.path.exists(os.path.join(os.path.join(target_root,"bins{0}".format(int(event_volume_bins/2))),file_name+"_"+str(unique_time)+".npy")) and os.path.exists(os.path.join(os.path.join(target_root,"bins{0}".format(event_volume_bins)),file_name+"_"+str(unique_time)+".npy")):
-                #     pbar.update(1)
-                #     continue
                 end_time = int(unique_time)
                 end_count = f_event.seek_time(end_time)
                 if end_count is None:
@@ -215,7 +172,6 @@ if __name__ == '__main__':
                 else:
                     start_time = end_time - round((end_time - start_time - events_window)/events_window_abin) * events_window_abin - events_window
 
-                #assert (start_time < time_upperbound) or (time_upperbound < 0)
                 if start_time > time_upperbound:
                     start_count = f_event.seek_time(start_time)
                     if (start_count is None) or (start_time < 0):
@@ -264,16 +220,13 @@ if __name__ == '__main__':
                     else:
                         volume, memory, generate_time = generate_taf_cuda(events_, shape, memory, event_volume_bins)
                         volume = torch.nn.functional.interpolate(volume[None,:,:,:], size = target_shape, mode='nearest')[0]
-                total_time += generate_time
-                total_count += 1
-                #print(total_time / total_count)
+                if mode == "test": 
+                    total_time += generate_time
+                    total_count += 1
                 volume = volume.view(event_volume_bins, 2, target_shape[0], target_shape[1])
-                volume = leaky_transform(volume)    #计算f(.)
+                volume = leaky_transform(volume)
                 ecd = volume.cpu().numpy().copy()
-                ecd = np.flip(ecd, axis = 0)    #和之后读取数据的方式有关
-                #print(ecd.shape)
-                #print(ecd.mean((1,2,3)))
-                #前四和后四通道分别存放，是因为消融实验中对比了4个通道和8个通道的情况
+                ecd = np.flip(ecd, axis = 0)
                 if not os.path.exists(os.path.join(target_root,"bins{0}".format(int(event_volume_bins/2)))):
                     os.makedirs(os.path.join(target_root,"bins{0}".format(int(event_volume_bins/2))))
                 ecd[:4].astype(np.uint8).tofile(os.path.join(os.path.join(target_root,"bins{0}".format(int(event_volume_bins/2))),file_name+"_"+str(unique_time)+".npy")) 
@@ -286,3 +239,4 @@ if __name__ == '__main__':
                 torch.cuda.empty_cache()
                 pbar.update(1)
         pbar.close()
+    print("Average Representation time: ", total_time / total_count)

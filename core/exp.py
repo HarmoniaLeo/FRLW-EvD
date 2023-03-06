@@ -233,9 +233,6 @@ class basicExp:
 
         if self.settings.resume_training:
             self.loadCheckpoint(self.settings.resume_ckpt_file)
-        if self.settings.finetune:
-            self.loadPretrained(self.settings.finetune_backbone_file,self.settings.finetune_neck_file)
-
 
         while self.epoch_step < self.settings.max_epoch_to_stop:
             # result = evaluator(self.object_classes,

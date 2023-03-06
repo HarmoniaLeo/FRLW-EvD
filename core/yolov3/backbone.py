@@ -56,8 +56,10 @@ class DarkNet_53(nn.Module):
                 Conv_BN_LeakyReLU(32, 64, k=3, p=1, s=2),
                 resblock(64, nblocks=1)
             )
+            self.bfm = False
         else:
             self.layer_1 = stem(in_channels, 64, ksize=3, act="silu")
+            self.bfm = True
         # stride = 4
         self.layer_2 = nn.Sequential(
             Conv_BN_LeakyReLU(64, 128, k=3, p=1, s=2),
@@ -83,7 +85,10 @@ class DarkNet_53(nn.Module):
         # self.fc = nn.Linear(1024, num_classes)
 
     def forward(self, x, targets=None):
-        c1 = self.layer_1(x[...,0])
+        if self.bfm:
+            c1 = self.layer_1(x)
+        else:
+            c1 = self.layer_1(x[...,0])
         c2 = self.layer_2(c1)
         c3 = self.layer_3(c2)
         c4 = self.layer_4(c3)

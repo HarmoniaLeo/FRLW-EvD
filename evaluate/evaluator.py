@@ -106,7 +106,6 @@ class evaluator:
         a_represent_time = 1000 * self.represent_time / self.infer_count
 
         print("Average infer time: {:.2f} ms. ".format(a_infer_time))
-        print("Average represent time: {:.2f} ms. ".format(a_represent_time))
 
         if not (self.recorder is None):
             self.recorder.save()
@@ -120,13 +119,8 @@ class recorder:
         self.data_names = []
         self.dt = []
         self.save_path = save_path
-        # self.res = 0
-        # self.iter_count = 0
 
     def record(self, dt_trans, file_name):
-        # self.iter_count += 1
-        # self.res += eval_results[0]
-        #print(self.res/self.iter_count)
         for j in range(len(dt_trans)):
             self.data_names.append(file_name)
             self.dt.append(dt_trans[j])
