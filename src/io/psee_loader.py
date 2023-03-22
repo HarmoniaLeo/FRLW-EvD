@@ -108,7 +108,9 @@ class PSEELoader(object):
         else:
             self._binary_format.stream_td_data(self._file, event_buffer, self._dtype, ev_count + 1)
             self.current_time = event_buffer['t'][ev_count]
-            self._file.seek(pos + ev_count * self._ev_size)
+            result = np.int64(pos) + np.int64(ev_count) * np.int64(self._ev_size)   #new
+            self._file.seek(result) #new
+            # self._file.seek(pos + ev_count * self._ev_size)
 
         return event_buffer[:ev_count]
 

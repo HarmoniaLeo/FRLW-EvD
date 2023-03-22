@@ -281,7 +281,7 @@ def visualizeVolume(volume,gt,dt,filename,path,time_stamp_end,tol,LABELMAP,suffi
         img[:,:,2] = np.where(c[i] > img_buf, tar2, img[:,:,2])
         img_buf = np.where(c[i]>img_buf, c[i], img_buf)
 
-    img_s = cv2.cvtColor(img_s, cv2.COLOR_HSV2BGR)
+    img_s = cv2.cvtColor(img_buf, cv2.COLOR_HSV2BGR)
 
     gt = gt[gt['t']==time_stamp_end]
     draw_bboxes(img_s,gt,0,LABELMAP)
