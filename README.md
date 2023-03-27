@@ -1,7 +1,7 @@
 ## 1. Setup
 
 ```shell
-git clone git@github.com:harmonialeo/FRLW-EvD
+git clone https://github.com/HarmoniaLeo/FRLW-EvD
 cd FRLW-EvD
 conda create --name FRLW-EvD --file requirements.txt
 conda active FRLW-EvD
