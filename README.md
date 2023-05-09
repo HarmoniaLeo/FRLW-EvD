@@ -192,3 +192,15 @@ python visualization.py -item EVENT_STREAM_NAME -end ANNOTATION_TIMESTAMP -volum
 
 * Visulize without the detection result: Do not set the parameter "-result_path"
 * The visualization result will be output to "visualization/item_end_suffix_datatype.png" (without the detection result) or "visualization/item_end_suffix_datatype_result.png" (with the detection result)
+
+## 8. Citation
+
+```
+@article{liu2023motion,
+  title={Motion robust high-speed light-weighted object detection with event camera},
+  author={Liu, Bingde and Xu, Chang and Yang, Wen and Yu, Huai and Yu, Lei},
+  journal={IEEE Transactions on Instrumentation and Measurement},
+  year={2023},
+  publisher={IEEE}
+}
+```
