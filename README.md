@@ -90,7 +90,13 @@ The evaluation part of code is adopted from [Prophesee Automotive Dataset Toolbo
 
 1. Download checkpoints from [Google Drive](https://drive.google.com/file/d/1GDMgkPQugfy2rtk_C0DWAx1y6peo8bG0/view?usp=sharing). 
 2. Unzip it under the folder "FRLW-EvD". 
-3. ```shell
+3. Generate optical flow estimations. 
+   ```shell
+   python generate_opticalflow.py -raw_dir root_for_GEN1_Dataset/ATIS_Automotive_Detection_Dataset/detection_dataset_duration_60s_ratio_1.0 --dataset gen1
+
+   python generate_opticalflow.py -raw_dir root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_sampling --dataset gen4
+   ```
+4. ```shell
     # Evaluation on 1MEGAPIXEL Dataset(Subset)
     CUDA_VISIBLE_DEVICES="0", python -m torch.distributed.launch --master_port 1403 --nproc_per_node 1 test.py --record True --bbox_path root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_sampling --dataset gen4 --resume_exp EXP_NAME --exp_type EXP_TYPE --event_volume_bins EVENT_VOLUME_BINS  --data_path root_for_1MEGAPIXEL_Dataset(Subset)/Large_Automotive_Detection_Dataset_processed/DATA_DIR 
     

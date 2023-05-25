@@ -93,10 +93,6 @@ def generate_timesurface(events,volume1, volume2,end_stamp):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='visualize one or several event files along with their boxes')
-    parser.add_argument('-dataset', type=str)
-    
-    parser = argparse.ArgumentParser(
     description='visualize one or several event files along with their boxes')
     parser.add_argument('-raw_dir', type=str)   # "train, val, test" level direcotory of the datasets, for data source
     parser.add_argument('-dataset', type=str, default="gen1")   # Perform experiment on Prophesee gen1/gen4 dataset
