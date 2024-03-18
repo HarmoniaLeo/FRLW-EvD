@@ -1,5 +1,4 @@
 import torch
-import event_representations as er
 import time
 import numpy as np
 
