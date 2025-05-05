@@ -239,4 +239,5 @@ if __name__ == '__main__':
                 torch.cuda.empty_cache()
                 pbar.update(1)
         pbar.close()
-    print("Average Representation time: ", total_time / total_count)
+    if mode == "test":
+        print("Average Representation time: ", total_time / total_count)
