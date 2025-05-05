@@ -213,6 +213,8 @@ if __name__ == '__main__':
                     torch.cuda.empty_cache()
             pbar.update(1)
         pbar.close()
-    print("Average Representation time: ")
-    for i,events_window in enumerate(time_windows):
-        print(time_windows, total_time[i] / total_count[i])
+
+    if mode == "test":
+        print("Average Representation time: ")
+        for i,events_window in enumerate(time_windows):
+            print(time_windows, total_time[i] / total_count[i])
